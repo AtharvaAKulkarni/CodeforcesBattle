@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WS Test</title>
+</head>
+<body>
+<button onclick="connect()">Connect</button>
+<button onclick="send()">Send Duel</button>
+
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+<script>
+    let stompClient = null;
+
+    function connect() {
+        const socket = new SockJS("http://localhost:8080/ws");
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({}, function(frame) {
+            console.log("CONNECTED:", frame);
+
+            stompClient.subscribe("/topic/duel", function(message) {
+                console.log("RECEIVED:", JSON.parse(message.body));
+            });
+        });
+    }
+
+    function send() {
+        stompClient.send("/app/create-duel", {}, JSON.stringify({
+            opponent1: "AtharvaK22",
+            opponent2: "Divy_k",
+            duelDurationSeconds: 120,
+            rating: 900
+        }));
+    }
+</script>
+</body>
+</html>

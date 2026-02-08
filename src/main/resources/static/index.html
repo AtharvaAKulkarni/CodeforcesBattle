@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CF1V1 Duel Test</title>
+</head>
+<body style="font-family: Arial; background:#0f172a; color:white; padding:20px">
+
+<h2>CF1V1 Duel Test Panel</h2>
+
+<div>
+    <label>Username:</label>
+    <input id="username" placeholder="atharva"/>
+    <button onclick="connect()">Connect</button>
+</div>
+
+<hr/>
+
+<div>
+    <h3>Create Room</h3>
+    <input id="user1" placeholder="User 1"/>
+    <input id="user2" placeholder="User 2"/>
+    <button onclick="createRoom()">Create Room</button>
+</div>
+
+<hr/>
+
+<div>
+    <h3>Join Room</h3>
+    <input id="roomId" placeholder="Room ID"/>
+    <button onclick="joinRoom()">Join Room</button>
+</div>
+
+<hr/>
+
+<h3>Logs</h3>
+<pre id="log" style="background:#020617; padding:10px; height:300px; overflow:auto;"></pre>
+
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+<script>
+    let stompClient = null;
+    let currentUser = null;
+
+    function log(msg){
+        document.getElementById("log").innerText += msg + "\n";
+    }
+
+    function connect(){
+        currentUser = document.getElementById("username").value;
+
+        const socket = new SockJS("http://localhost:8080/ws");
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({}, function(){
+            log("✅ Connected as " + currentUser);
+
+            // private queue for roomId
+            stompClient.subscribe("/queue/duel-room/" + currentUser, function(msg){
+                const roomId = msg.body;
+                log("📥 Got roomId: " + roomId);
+                document.getElementById("roomId").value = roomId;
+
+                // auto subscribe to duel room
+                stompClient.subscribe("/topic/duel/" + roomId, function(m){
+                    log("🔥 Duel Data:");
+                    log(m.body);
+                });
+            });
+        });
+    }
+
+    function createRoom(){
+        const u1 = document.getElementById("user1").value;
+        const u2 = document.getElementById("user2").value;
+
+        stompClient.send("/app/duel/create-room", {}, JSON.stringify({
+            user1: u1,
+            user2: u2
+        }));
+
+        log("📤 Create room sent: " + u1 + " vs " + u2);
+    }
+
+    function joinRoom(){
+    const roomId = document.getElementById("roomId").value;
+
+    stompClient.send("/app/duel/join", {}, JSON.stringify({
+        roomId: roomId,
+        joiningUsername: currentUser,   // maps to Duel.joiningUsername
+        opponent1: document.getElementById("user1").value,
+        opponent2: document.getElementById("user2").value.toString(),
+        duelDurationSeconds: 120,
+        rating: 900,
+        result: null,
+        question: null,
+        id: null
+    }));
+
+    log("📤 Join room sent: " + roomId + " by " + currentUser);
+}
+
+</script>
+
+</body>
+</html>
